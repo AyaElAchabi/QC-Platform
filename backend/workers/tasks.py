@@ -8,6 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from minio import Minio
 from workers.celery_app import celery_app
+from services.metrics import metrics_service
 
 # Configuration
 DATABASE_URL = "postgresql://admin:secret@postgres:5432/mlops_qc"
@@ -15,7 +16,8 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 
 minio_client = Minio("minio:9000", access_key="minioadmin", secret_key="minioadmin", secure=False)
-BUCKET_NAME = "mlops-images"
+BUCKET_NAME = "mlops-images"  # Pour les images du dataset
+MODELS_BUCKET = "mlops-models"  # Pour les modèles entraînés
 
 
 @celery_app.task(bind=True)
@@ -74,11 +76,15 @@ def train_yolo_model(self, job_id: str):
                 if hasattr(trainer, 'metrics') and trainer.metrics:
                     print(f"[CALLBACK DEBUG] Trainer has metrics: {trainer.metrics}")
                     metrics_dict = {
-                        "loss": float(trainer.loss.item()) if hasattr(trainer, 'loss') else 0,
+                        # Métriques de performance
                         "map50": float(trainer.metrics.get('metrics/mAP50(B)', 0)),
                         "map50_95": float(trainer.metrics.get('metrics/mAP50-95(B)', 0)),
                         "precision": float(trainer.metrics.get('metrics/precision(B)', 0)),
                         "recall": float(trainer.metrics.get('metrics/recall(B)', 0)),
+                        # Losses (pour le graphique Losses)
+                        "box_loss": float(trainer.metrics.get('val/box_loss', 0)),
+                        "cls_loss": float(trainer.metrics.get('val/cls_loss', 0)),
+                        "dfl_loss": float(trainer.metrics.get('val/dfl_loss', 0)),
                     }
                 
                 # Créer une nouvelle session DB pour le callback
@@ -100,10 +106,13 @@ def train_yolo_model(self, job_id: str):
                                 **metrics_dict
                             })
                             
+                            # IMPORTANT: Forcer SQLAlchemy à détecter le changement dans le JSON
+                            from sqlalchemy.orm.attributes import flag_modified
                             job_update.metrics = metrics_history
+                            flag_modified(job_update, "metrics")
                         
                         callback_db.commit()
-                        print(f"[CALLBACK] Epoch {epoch + 1}/{job.epochs} - Progress: {job_update.progress:.2%} - Metrics: {metrics_dict}")
+                        print(f"[CALLBACK] Epoch {epoch + 1}/{job.epochs} - Progress: {job_update.progress:.2%} - Metrics saved: {len(metrics_history)} epochs")
                     else:
                         print(f"[CALLBACK ERROR] Job {job_id} not found in database")
                 finally:
@@ -135,25 +144,187 @@ def train_yolo_model(self, job_id: str):
         best_model = os.path.join(workspace, "training", "weights", "best.pt")
         model_storage_path = f"models/{job.project_id}/{job_id}_best.pt"
         
+        # S'assurer que le bucket mlops-models existe
+        try:
+            if not minio_client.bucket_exists(MODELS_BUCKET):
+                minio_client.make_bucket(MODELS_BUCKET)
+                print(f"✅ Created MinIO bucket: {MODELS_BUCKET}")
+        except Exception as e:
+            print(f"⚠️ Bucket check/creation warning: {e}")
+        
+        # Upload du modèle dans MinIO
         with open(best_model, 'rb') as f:
+            file_size = os.path.getsize(best_model)
             minio_client.put_object(
-                BUCKET_NAME,
+                MODELS_BUCKET,
                 model_storage_path,
                 f,
-                length=os.path.getsize(best_model)
+                length=file_size
             )
         
-        # Finaliser
+        print(f"✅ Model uploaded to MinIO: {MODELS_BUCKET}/{model_storage_path} ({file_size} bytes)")
+        
+        # ============ COMPUTE EXTENDED METRICS ============
+        print("[METRICS] Computing extended metrics on validation set...")
+        extended_metrics = None
+        class_names = []
+        
+        try:
+            # Récupérer les classes du projet
+            from models.project import Project
+            project = db.query(Project).filter(Project.id == job.project_id).first()
+            class_names = [c['name'] for c in (project.classes or [])]
+            
+            # Charger le modèle entraîné
+            trained_model = YOLO(best_model)
+            
+            # Effectuer la validation sur le dataset de validation
+            val_images_dir = os.path.join(dataset_dir, "images", "val")
+            val_labels_dir = os.path.join(dataset_dir, "labels", "val")
+            
+            predictions = []
+            ground_truths = []
+            
+            # Parcourir les images de validation
+            if os.path.exists(val_images_dir):
+                import glob
+                from PIL import Image as PILImage
+                
+                val_images = glob.glob(os.path.join(val_images_dir, "*"))
+                print(f"[METRICS] Processing {len(val_images)} validation images...")
+                
+                for img_path in val_images:
+                    try:
+                        # Prédiction sur l'image
+                        img = PILImage.open(img_path)
+                        img_width, img_height = img.size
+                        
+                        results = trained_model.predict(img_path, conf=0.25, verbose=False)
+                        
+                        # Collecter les prédictions
+                        if results and len(results) > 0:
+                            result = results[0]
+                            if result.boxes is not None:
+                                for box in result.boxes:
+                                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().tolist()
+                                    class_id = int(box.cls[0].cpu().numpy())
+                                    confidence = float(box.conf[0].cpu().numpy())
+                                    
+                                    predictions.append({
+                                        "bbox": [x1, y1, x2, y2],
+                                        "class_name": class_names[class_id] if class_id < len(class_names) else f"class_{class_id}",
+                                        "confidence": confidence
+                                    })
+                        
+                        # Charger les ground truths depuis les fichiers labels
+                        label_file = os.path.join(
+                            val_labels_dir,
+                            Path(img_path).stem + ".txt"
+                        )
+                        
+                        if os.path.exists(label_file):
+                            with open(label_file, 'r') as f:
+                                for line in f:
+                                    parts = line.strip().split()
+                                    if len(parts) >= 5:
+                                        class_id = int(parts[0])
+                                        x_center = float(parts[1]) * img_width
+                                        y_center = float(parts[2]) * img_height
+                                        width = float(parts[3]) * img_width
+                                        height = float(parts[4]) * img_height
+                                        
+                                        x1 = x_center - width / 2
+                                        y1 = y_center - height / 2
+                                        x2 = x_center + width / 2
+                                        y2 = y_center + height / 2
+                                        
+                                        ground_truths.append({
+                                            "bbox": [x1, y1, x2, y2],
+                                            "class_name": class_names[class_id] if class_id < len(class_names) else f"class_{class_id}"
+                                        })
+                    except Exception as img_err:
+                        print(f"[METRICS] Warning processing image {img_path}: {img_err}")
+                        continue
+                
+                print(f"[METRICS] Collected {len(predictions)} predictions, {len(ground_truths)} ground truths")
+                
+                # Calculer les métriques étendues
+                if predictions or ground_truths:
+                    extended_metrics = metrics_service.compute_all_metrics(
+                        predictions=predictions,
+                        ground_truths=ground_truths,
+                        class_names=class_names,
+                        iou_threshold=0.5
+                    )
+                    print(f"[METRICS] Extended metrics computed successfully!")
+                    print(f"[METRICS] AUROC: {extended_metrics.get('auroc', 'N/A')}, ECE: {extended_metrics.get('calibration', {}).get('ece', 'N/A')}")
+                else:
+                    print("[METRICS] No predictions or ground truths to compute metrics")
+        except Exception as metrics_err:
+            print(f"[METRICS] Error computing extended metrics: {metrics_err}")
+            import traceback
+            traceback.print_exc()
+        # ============ END EXTENDED METRICS ============
+        
+        # Finaliser le job
         job.status = "completed"
         job.completed_at = datetime.utcnow()
         job.model_path = model_storage_path
         job.progress = 1.0
+        
+        # Créer une entrée dans la table models
+        from models.model import Model, ModelStage
+        
+        # Récupérer les métriques finales (dernière epoch)
+        final_metrics = job.metrics[-1] if job.metrics and len(job.metrics) > 0 else {}
+        
+        # Ajouter les métriques étendues aux métriques finales
+        if extended_metrics:
+            final_metrics["extended_metrics"] = extended_metrics
+        
+        # Stocker les class_names dans le job pour le frontend
+        if class_names:
+            final_metrics["class_names"] = class_names
+        
+        # Mettre à jour le job avec les métriques étendues
+        from sqlalchemy.orm.attributes import flag_modified
+        if job.metrics and len(job.metrics) > 0:
+            job.metrics[-1] = final_metrics
+            flag_modified(job, "metrics")
+        
+        # Créer le modèle
+        model_entry = Model(
+            training_job_id=job.id,
+            project_id=job.project_id,
+            name=f"{job.model_name}_trained",
+            version=f"v1.0_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+            task_type="object_detection",
+            architecture=job.model_name,
+            storage_path=model_storage_path,
+            metrics=final_metrics,
+            hyperparameters={
+                "epochs": job.epochs,
+                "batch_size": job.batch_size,
+                "img_size": job.img_size,
+                "learning_rate": job.learning_rate,
+                "patience": job.patience
+            },
+            stage=ModelStage.STAGING,
+            is_active=True,
+            created_by=job.created_by
+        )
+        
+        db.add(model_entry)
         db.commit()
+        
+        print(f"[SUCCESS] Model saved to database: {model_entry.id}")
+        if extended_metrics:
+            print(f"[SUCCESS] Extended metrics included in model")
         
         # Nettoyer
         shutil.rmtree(workspace)
         
-        return {"status": "success", "job_id": str(job_id)}
+        return {"status": "success", "job_id": str(job_id), "has_extended_metrics": extended_metrics is not None}
     
     except Exception as e:
         job = db.query(TrainingJob).filter(TrainingJob.id == job_id).first()

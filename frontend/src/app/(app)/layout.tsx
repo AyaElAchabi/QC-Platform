@@ -3,9 +3,11 @@
 import { ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const { checkAuth, user } = useAuth();
 
   useEffect(() => {
     const token = localStorage.getItem("mlops_access_token");
@@ -14,8 +16,17 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     if (!token) {
       console.log("🔴 AppLayout - Pas de token, redirection vers login");
       router.push("/auth/login");
+    } else {
+      // Charger les données utilisateur depuis le localStorage
+      console.log("🟢 AppLayout - Token présent, chargement des données...");
+      checkAuth();
     }
-  }, [router]);
+  }, [router, checkAuth]);
+  
+  // Log pour debug
+  useEffect(() => {
+    console.log("🔍 AppLayout - User chargé:", user);
+  }, [user]);
 
   // Toujours afficher le layout - la redirection se fera si nécessaire
   return (

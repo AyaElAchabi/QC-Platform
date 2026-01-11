@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, DateTime, ForeignKey, Text, JSON
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from core.database import Base
 
@@ -17,3 +18,6 @@ class Project(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     labelstudio_project_id = Column(String, nullable=True)
+    
+    # Relationships
+    models = relationship("Model", back_populates="project")

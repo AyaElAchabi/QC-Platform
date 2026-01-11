@@ -45,7 +45,7 @@ class Model(Base):
     # Relationships
     training_job = relationship("TrainingJob", back_populates="models")
     project = relationship("Project", back_populates="models")
-    inference_runs = relationship("InferenceRun", back_populates="model")
+    # inference_runs = relationship("InferenceRun", back_populates="model")  # Commented out for now
 
     def __repr__(self):
         return f"<Model {self.name} v{self.version} ({self.stage})>"

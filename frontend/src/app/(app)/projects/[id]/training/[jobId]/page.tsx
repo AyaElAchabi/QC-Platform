@@ -5,8 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Download, CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Download, CheckCircle, XCircle, Clock, Loader2, BarChart3, Target } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
+import { MetricsPanel } from "@/components/metrics/MetricsPanel";
+import { CalibrationChart } from "@/components/metrics/CalibrationChart";
+import { ConfusionMatrix } from "@/components/metrics/ConfusionMatrix";
 import {
   LineChart,
   Line,
@@ -43,6 +47,8 @@ interface TrainingJob {
   started_at?: string;
   completed_at?: string;
   config: any;
+  extended_metrics?: any;
+  class_names?: string[];
 }
 
 export default function TrainingJobPage() {
@@ -57,7 +63,7 @@ export default function TrainingJobPage() {
 
   const handleDownloadModel = async () => {
     if (!job?.model_path) return;
-    
+
     try {
       // TODO: Implémenter le téléchargement depuis MinIO
       // Pour l'instant, afficher une alerte
@@ -129,6 +135,22 @@ export default function TrainingJobPage() {
     };
     return labels[status] || status;
   };
+
+  // Extract extended metrics from the last entry of job.metrics array
+  const getExtendedMetrics = () => {
+    if (!job?.metrics || job.metrics.length === 0) return null;
+    const lastMetrics = job.metrics[job.metrics.length - 1];
+    return lastMetrics?.extended_metrics || null;
+  };
+
+  const getClassNames = () => {
+    if (!job?.metrics || job.metrics.length === 0) return [];
+    const lastMetrics = job.metrics[job.metrics.length - 1];
+    return lastMetrics?.class_names || [];
+  };
+
+  const extendedMetrics = getExtendedMetrics();
+  const classNames = getClassNames();
 
   if (isLoading) {
     return (
@@ -336,6 +358,69 @@ export default function TrainingJobPage() {
                 </p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Advanced Metrics Section - Only show when training is completed */}
+      {job.status === "completed" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-purple-500" />
+              Métriques Avancées
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="overview">Vue d&apos;ensemble</TabsTrigger>
+                <TabsTrigger value="calibration">Calibration</TabsTrigger>
+                <TabsTrigger value="confusion">Matrice de Confusion</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="mt-4">
+                {job.extended_metrics ? (
+                  <MetricsPanel
+                    businessMetrics={job.extended_metrics.business_metrics}
+                    auroc={job.extended_metrics.auroc}
+                    calibration={job.extended_metrics.calibration}
+                    iouDistribution={job.extended_metrics.iou_distribution}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Métriques avancées non disponibles pour ce job.</p>
+                    <p className="text-sm mt-2">
+                      Les métriques étendues (AUROC, ECE, FP/FN) seront calculées lors de la validation.
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="calibration" className="mt-4">
+                {job.extended_metrics?.calibration ? (
+                  <CalibrationChart data={job.extended_metrics.calibration} />
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Données de calibration non disponibles.</p>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="confusion" className="mt-4">
+                {job.extended_metrics?.confusion_matrix && job.class_names ? (
+                  <ConfusionMatrix
+                    data={job.extended_metrics.confusion_matrix}
+                    classNames={job.class_names}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Matrice de confusion non disponible.</p>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       )}

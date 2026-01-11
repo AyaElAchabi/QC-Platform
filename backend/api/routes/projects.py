@@ -10,6 +10,7 @@ from api.dependencies import get_db, get_current_user
 from models.user import User
 from models.project import Project
 from models.image import ImageModel
+from models.model import Model
 
 router = APIRouter()
 
@@ -38,6 +39,7 @@ async def get_projects(
     for p in projects:
         total = db.query(func.count(ImageModel.id)).filter(ImageModel.project_id == p.id).scalar() or 0
         annotated = db.query(func.count(ImageModel.id)).filter(ImageModel.project_id == p.id, ImageModel.status == "annotated").scalar() or 0
+        models_count = db.query(func.count(Model.id)).filter(Model.project_id == p.id).scalar() or 0
         result.append({
             "id": p.id,
             "name": p.name,
@@ -47,7 +49,7 @@ async def get_projects(
             "classes": p.classes or [],
             "total_images": total,
             "annotated_images": annotated,
-            "total_models": 0,
+            "models_count": models_count,
             "created_at": p.created_at.isoformat(),
             "updated_at": p.updated_at.isoformat() if p.updated_at else p.created_at.isoformat(),
         })
@@ -65,6 +67,7 @@ async def get_project(
     
     total = db.query(func.count(ImageModel.id)).filter(ImageModel.project_id == project_id).scalar() or 0
     annotated = db.query(func.count(ImageModel.id)).filter(ImageModel.project_id == project_id, ImageModel.status == "annotated").scalar() or 0
+    models_count = db.query(func.count(Model.id)).filter(Model.project_id == project_id).scalar() or 0
     
     return {
         "id": project.id,
@@ -75,7 +78,7 @@ async def get_project(
         "classes": project.classes or [],
         "total_images": total,
         "annotated_images": annotated,
-        "total_models": 0,
+        "models_count": models_count,
         "created_at": project.created_at.isoformat(),
         "updated_at": project.updated_at.isoformat() if project.updated_at else project.created_at.isoformat(),
     }

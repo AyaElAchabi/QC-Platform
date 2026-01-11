@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Frontend - Détection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        canvas {
+            max-width: 100%;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .detections-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .detections-table th,
+        .detections-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .detections-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .success {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Frontend - Affichage des Détections</h1>
+        
+        <div class="info">
+            <strong>Objectif :</strong> Vérifier que le frontend affiche correctement les bounding boxes et le tableau des détections.
+            <br><br>
+            Ce test simule une réponse API avec 3 détections sur une image de 640x480px.
+        </div>
+
+        <h2>Canvas avec Bounding Boxes</h2>
+        <canvas id="canvas"></canvas>
+
+        <div class="info">
+            <p><strong>Temps d'inférence :</strong> <span class="success">285 ms</span></p>
+            <p><strong>Nombre de détections :</strong> <span class="success">3</span></p>
+            <p><strong>Seuil de confiance :</strong> 0.25</p>
+        </div>
+
+        <h2>Tableau des Détections</h2>
+        <table class="detections-table">
+            <thead>
+                <tr>
+                    <th>Classe</th>
+                    <th>Confiance</th>
+                    <th>Position (x1, y1, x2, y2)</th>
+                    <th>Taille</th>
+                </tr>
+            </thead>
+            <tbody id="detections-tbody">
+                <!-- Sera rempli par JavaScript -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Données de test simulées (format de l'API)
+        const mockDetections = [
+            {
+                class_id: 0,
+                class_name: "scratch",
+                confidence: 0.87,
+                bbox: [120, 80, 220, 180]
+            },
+            {
+                class_id: 1,
+                class_name: "crack",
+                confidence: 0.92,
+                bbox: [350, 150, 480, 280]
+            },
+            {
+                class_id: 0,
+                class_name: "scratch",
+                confidence: 0.76,
+                bbox: [50, 320, 180, 420]
+            }
+        ];
+
+        // Couleurs pour les classes
+        const colors = [
+            "#FF6B6B",
+            "#4ECDC4",
+            "#45B7D1",
+            "#FFA07A",
+            "#98D8C8",
+            "#F7DC6F",
+        ];
+
+        // Créer une image de test
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Créer une image de fond
+        const img = new Image();
+        img.onload = function() {
+            canvas.width = 640;
+            canvas.height = 480;
+            
+            // Dessiner un fond gris simulant une surface
+            ctx.fillStyle = '#cccccc';
+            ctx.fillRect(0, 0, 640, 480);
+            
+            // Ajouter du bruit pour simuler une texture
+            for (let i = 0; i < 5000; i++) {
+                ctx.fillStyle = `rgba(${Math.random() * 50}, ${Math.random() * 50}, ${Math.random() * 50}, 0.3)`;
+                ctx.fillRect(Math.random() * 640, Math.random() * 480, 2, 2);
+            }
+            
+            // Dessiner les détections (comme dans le frontend React)
+            mockDetections.forEach((detection, idx) => {
+                const [x1, y1, x2, y2] = detection.bbox;
+                const color = colors[detection.class_id % colors.length];
+                
+                // Box
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+                
+                // Label background
+                ctx.fillStyle = color;
+                const label = `${detection.class_name} ${(detection.confidence * 100).toFixed(1)}%`;
+                ctx.font = "16px Arial";
+                const textWidth = ctx.measureText(label).width;
+                ctx.fillRect(x1, y1 - 25, textWidth + 10, 25);
+                
+                // Label text
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fillText(label, x1 + 5, y1 - 7);
+            });
+        };
+        
+        // Déclencher le chargement
+        img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+        // Remplir le tableau
+        const tbody = document.getElementById('detections-tbody');
+        mockDetections.forEach((detection, idx) => {
+            const row = document.createElement('tr');
+            const [x1, y1, x2, y2] = detection.bbox;
+            const width = x2 - x1;
+            const height = y2 - y1;
+            const color = colors[detection.class_id % colors.length];
+            
+            row.innerHTML = `
+                <td>
+                    <span class="badge" style="background-color: ${color}; color: white;">
+                        ${detection.class_name}
+                    </span>
+                </td>
+                <td>${(detection.confidence * 100).toFixed(1)}%</td>
+                <td>(${x1}, ${y1}, ${x2}, ${y2})</td>
+                <td>${width}x${height}px</td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        console.log('✅ Test frontend chargé avec succès');
+        console.log('📊 Détections simulées:', mockDetections);
+    </script>
+</body>
+</html>

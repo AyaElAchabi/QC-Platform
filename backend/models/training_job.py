@@ -1,5 +1,6 @@
 from sqlalchemy import Column, String, Integer, Float, DateTime, JSON, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from core.database import Base
 import uuid
 from datetime import datetime
@@ -10,6 +11,7 @@ class TrainingJob(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    # created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)  # Not in migration
     
     # Configuration
     model_name = Column(String, nullable=False)
@@ -21,7 +23,7 @@ class TrainingJob(Base):
     config = Column(JSON)
     
     # Status
-    status = Column(String, default="pending")  # pending, running, completed, failed
+    status = Column(String, default="pending")  # pending, running, completed, failed, cancelled
     progress = Column(Float, default=0.0)
     current_epoch = Column(Integer, default=0)
     
@@ -39,3 +41,6 @@ class TrainingJob(Base):
     
     # Error
     error_message = Column(String)
+    
+    # Relationships
+    models = relationship("Model", back_populates="training_job")

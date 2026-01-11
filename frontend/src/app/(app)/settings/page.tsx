@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { User, Key, Bell, Shield } from "lucide-react";
+import { User, Key, Bell, Shield, Users, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -18,6 +20,33 @@ export default function SettingsPage() {
           Gérez votre compte et vos préférences
         </p>
       </div>
+
+      {/* Gestion des utilisateurs - Admin uniquement */}
+      {isAdmin && (
+        <Card className="border-blue-200 bg-blue-50/50">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Users className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle>Gestion des utilisateurs</CardTitle>
+                  <CardDescription>
+                    Gérer les utilisateurs, leurs rôles et permissions
+                  </CardDescription>
+                </div>
+              </div>
+              <Link href="/settings/users">
+                <Button variant="outline" className="gap-2">
+                  Accéder
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </CardHeader>
+        </Card>
+      )}
 
       {/* Profil */}
       <Card>
@@ -35,7 +64,7 @@ export default function SettingsPage() {
             <Label>Email</Label>
             <Input
               type="email"
-              value={localStorage.getItem("mlops_user_email") || "eyaelachabi@gmail.com"}
+              value={typeof window !== 'undefined' ? localStorage.getItem("mlops_user_email") || user?.email || "" : ""}
               disabled
             />
           </div>

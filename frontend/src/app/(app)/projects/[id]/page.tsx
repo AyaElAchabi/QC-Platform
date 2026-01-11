@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import { useProject } from "@/lib/hooks/useProjects";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,15 +16,65 @@ import {
   BarChart3,
   Play,
   Zap,
+  Download,
+  Brain,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { getAuthToken } from "@/lib/auth";
 
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const { data: project, isLoading } = useProject(id);
   const [activeTab, setActiveTab] = useState("overview");
+  const [projectModels, setProjectModels] = useState<any[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === "models") {
+      fetchProjectModels();
+    }
+  }, [activeTab, id]);
+
+  const fetchProjectModels = async () => {
+    setLoadingModels(true);
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        console.error("No auth token found");
+        return;
+      }
+      const response = await fetch(`http://localhost:8000/models?project_id=${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setProjectModels(data);
+      } else {
+        console.error("Failed to fetch models:", response.status);
+      }
+    } catch (error) {
+      console.error("Error fetching models:", error);
+    } finally {
+      setLoadingModels(false);
+    }
+  };
+
+  const getStageColor = (stage: string) => {
+    switch (stage) {
+      case "production":
+        return "bg-green-500";
+      case "staging":
+        return "bg-yellow-500";
+      case "archived":
+        return "bg-gray-500";
+      default:
+        return "bg-blue-500";
+    }
+  };
 
   if (isLoading) {
     return <div>Chargement...</div>;
@@ -297,13 +347,112 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         </TabsContent>
 
         <TabsContent value="models">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground text-center py-8">
-                Aucun modèle entraîné
-              </p>
-            </CardContent>
-          </Card>
+          {loadingModels ? (
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-muted-foreground text-center py-8">
+                  Chargement des modèles...
+                </p>
+              </CardContent>
+            </Card>
+          ) : projectModels.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <Brain className="h-16 w-16 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Aucun modèle entraîné</h3>
+                <p className="text-muted-foreground mb-4 text-center max-w-md">
+                  Entraînez votre premier modèle YOLOv8 pour ce projet
+                </p>
+                <Button onClick={() => setActiveTab("training")}>
+                  <Play className="mr-2 h-4 w-4" />
+                  Aller au Training
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {projectModels.map((model) => (
+                <Card key={model.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg">{model.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {model.version}
+                        </p>
+                      </div>
+                      <Badge className={getStageColor(model.stage)}>
+                        {model.stage}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Architecture:</span>
+                        <span className="font-medium">{model.architecture}</span>
+                      </div>
+                      {model.metrics?.map50_95 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">mAP50-95:</span>
+                          <span className="font-medium">
+                            {(model.metrics.map50_95 * 100).toFixed(2)}%
+                          </span>
+                        </div>
+                      )}
+                      {model.metrics?.map50 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">mAP50:</span>
+                          <span className="font-medium">
+                            {(model.metrics.map50 * 100).toFixed(2)}%
+                          </span>
+                        </div>
+                      )}
+                      {model.metrics?.precision && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Précision:</span>
+                          <span className="font-medium">
+                            {(model.metrics.precision * 100).toFixed(2)}%
+                          </span>
+                        </div>
+                      )}
+                      {model.metrics?.recall && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Rappel:</span>
+                          <span className="font-medium">
+                            {(model.metrics.recall * 100).toFixed(2)}%
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Inférences:</span>
+                        <span className="font-medium">{model.inference_count}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <Button variant="outline" size="sm" className="flex-1" disabled>
+                        <Download className="mr-2 h-4 w-4" />
+                        Télécharger
+                      </Button>
+                      <Button variant="outline" size="sm" disabled>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {model.training_job_id && (
+                      <Link
+                        href={`/projects/${id}/training/${model.training_job_id}`}
+                        className="text-xs text-blue-500 hover:underline block text-center"
+                      >
+                        Voir le training →
+                      </Link>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

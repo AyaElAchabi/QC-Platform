@@ -12,6 +12,7 @@ from models.image import ImageModel
 from models.training_job import TrainingJob
 from workers.tasks import train_yolo_model
 from workers.celery_app import celery_app
+from services.metrics.metrics_calculator import MetricsCalculator
 
 router = APIRouter()
 
@@ -146,15 +147,15 @@ async def get_project_training_job(
     current_user: User = Depends(get_current_user),
 ):
     """Obtenir le statut d'un job de training spécifique pour un projet"""
-    
+
     job = db.query(TrainingJob).filter(
         TrainingJob.id == job_id,
         TrainingJob.project_id == project_id
     ).first()
-    
+
     if not job:
         raise HTTPException(status_code=404, detail="Training job not found")
-    
+
     # Gérer les métriques (peut être un array ou un objet pour les anciens jobs)
     metrics_array = []
     if job.metrics:
@@ -167,7 +168,29 @@ async def get_project_training_job(
                 "epoch": job.current_epoch,
                 **job.metrics
             }]
-    
+
+    # Calculer les métriques étendues si le job est terminé
+    extended_metrics = None
+    class_names = []
+
+    if job.status == "completed" and metrics_array:
+        # Récupérer les noms de classes du projet
+        project = db.query(Project).filter(Project.id == project_id).first()
+        if project and project.classes:
+            class_names = [dc.get("name", f"Class {i}") for i, dc in enumerate(project.classes)]
+
+        # Calculer les métriques étendues
+        extended_metrics = MetricsCalculator.calculate_extended_metrics(
+            metrics_history=metrics_array,
+            class_names=class_names if class_names else None
+        )
+
+        # Ajouter les métriques étendues au dernier élément du tableau metrics
+        # pour compatibilité avec le frontend existant
+        if metrics_array and extended_metrics:
+            metrics_array[-1]["extended_metrics"] = extended_metrics
+            metrics_array[-1]["class_names"] = class_names
+
     return {
         "id": job.id,
         "status": job.status,
@@ -180,7 +203,9 @@ async def get_project_training_job(
         "created_at": job.created_at.isoformat(),
         "started_at": job.started_at.isoformat() if job.started_at else None,
         "completed_at": job.completed_at.isoformat() if job.completed_at else None,
-        "config": job.config
+        "config": job.config,
+        "extended_metrics": extended_metrics,
+        "class_names": class_names
     }
 
 

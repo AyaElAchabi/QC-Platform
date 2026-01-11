@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forcer la Reconnexion Admin</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: white;
+            color: #333;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .step {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #28a745;
+            display: none;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #dc3545;
+            display: none;
+        }
+        .info {
+            background: #cce5ff;
+            color: #004085;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #007bff;
+        }
+        code {
+            background: #f1f1f1;
+            padding: 3px 6px;
+            border-radius: 4px;
+            color: #d63384;
+        }
+        .emoji {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><span class="emoji">🔧</span>Forcer la Reconnexion Admin</h1>
+        <p>Cet outil va nettoyer votre session et forcer une reconnexion propre pour charger le rôle admin.</p>
+
+        <div class="info">
+            <strong>⚠️ Problème détecté :</strong> Le menu "Utilisateurs" n'apparaît pas car le rôle admin n'est pas chargé dans votre session actuelle.
+        </div>
+
+        <div class="step">
+            <h3><span class="emoji">1️⃣</span>Nettoyer la session actuelle</h3>
+            <p>Supprime tous les tokens et données de session stockés.</p>
+            <button onclick="clearSession()">🗑️ Nettoyer la session</button>
+        </div>
+
+        <div class="step">
+            <h3><span class="emoji">2️⃣</span>Se reconnecter</h3>
+            <p>Après le nettoyage, reconnectez-vous avec :</p>
+            <ul>
+                <li><strong>Email :</strong> <code>eyaelachabi@gmail.com</code></li>
+                <li><strong>Password :</strong> <code>Eyaelach0200@</code></li>
+            </ul>
+            <button onclick="goToLogin()">🔐 Aller à la page de connexion</button>
+        </div>
+
+        <div class="step">
+            <h3><span class="emoji">3️⃣</span>Vérifier le menu</h3>
+            <p>Après connexion, le menu "👥 Utilisateurs" devrait apparaître dans la sidebar.</p>
+            <button onclick="goToDashboard()">📊 Aller au Dashboard</button>
+        </div>
+
+        <div id="successMsg" class="success">
+            ✅ <strong>Session nettoyée avec succès !</strong><br>
+            Vous pouvez maintenant vous reconnecter.
+        </div>
+
+        <div id="errorMsg" class="error">
+            ❌ Une erreur s'est produite. Veuillez actualiser la page et réessayer.
+        </div>
+
+        <hr style="margin: 40px 0; border: 1px solid #ddd;">
+
+        <h3>🐛 Diagnostic de la session actuelle</h3>
+        <div id="diagnosis" style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p>Chargement...</p>
+        </div>
+        <button onclick="runDiagnosis()">🔍 Lancer le diagnostic</button>
+    </div>
+
+    <script>
+        // Fonction pour nettoyer la session
+        function clearSession() {
+            try {
+                // Nettoyer localStorage
+                localStorage.removeItem('mlops_access_token');
+                localStorage.removeItem('mlops_refresh_token');
+                localStorage.removeItem('mlops_user_email');
+                localStorage.removeItem('mlops_user_role');
+                localStorage.removeItem('mlops_user_id');
+                
+                // Nettoyer sessionStorage
+                sessionStorage.clear();
+                
+                // Nettoyer les cookies (si utilisés)
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                
+                document.getElementById('successMsg').style.display = 'block';
+                document.getElementById('errorMsg').style.display = 'none';
+                
+                console.log('✅ Session nettoyée avec succès');
+            } catch (error) {
+                console.error('❌ Erreur lors du nettoyage:', error);
+                document.getElementById('errorMsg').style.display = 'block';
+                document.getElementById('successMsg').style.display = 'none';
+            }
+        }
+
+        // Fonction pour aller à la page de connexion
+        function goToLogin() {
+            window.location.href = 'http://localhost:3000/auth/login';
+        }
+
+        // Fonction pour aller au dashboard
+        function goToDashboard() {
+            window.location.href = 'http://localhost:3000/dashboard';
+        }
+
+        // Fonction de diagnostic
+        function runDiagnosis() {
+            const token = localStorage.getItem('mlops_access_token');
+            const email = localStorage.getItem('mlops_user_email');
+            const role = localStorage.getItem('mlops_user_role');
+            const userId = localStorage.getItem('mlops_user_id');
+            
+            let diagnosis = '<h4>État actuel de la session :</h4>';
+            diagnosis += '<ul style="text-align: left;">';
+            diagnosis += `<li><strong>Token :</strong> ${token ? '✅ Présent (' + token.substring(0, 30) + '...)' : '❌ Absent'}</li>`;
+            diagnosis += `<li><strong>Email :</strong> ${email ? '✅ ' + email : '❌ Absent'}</li>`;
+            diagnosis += `<li><strong>Rôle :</strong> ${role ? '✅ ' + role : '❌ Absent (PROBLÈME!)'}</li>`;
+            diagnosis += `<li><strong>User ID :</strong> ${userId ? '✅ ' + userId : '❌ Absent'}</li>`;
+            diagnosis += '</ul>';
+            
+            if (!role) {
+                diagnosis += '<div style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 8px; margin-top: 15px;">';
+                diagnosis += '<strong>⚠️ PROBLÈME DÉTECTÉ :</strong><br>';
+                diagnosis += 'Le rôle utilisateur n\'est pas sauvegardé dans localStorage.<br>';
+                diagnosis += 'C\'est pourquoi le menu "Utilisateurs" n\'apparaît pas.<br><br>';
+                diagnosis += '<strong>Solution :</strong> Cliquez sur "Nettoyer la session" puis reconnectez-vous.';
+                diagnosis += '</div>';
+            } else if (role === 'ADMIN') {
+                diagnosis += '<div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 8px; margin-top: 15px;">';
+                diagnosis += '<strong>✅ TOUT EST OK !</strong><br>';
+                diagnosis += 'Vous êtes connecté en tant qu\'ADMIN.<br>';
+                diagnosis += 'Si le menu "Utilisateurs" n\'apparaît toujours pas, actualisez la page (Ctrl+R ou Cmd+R).';
+                diagnosis += '</div>';
+            }
+            
+            document.getElementById('diagnosis').innerHTML = diagnosis;
+        }
+
+        // Lancer le diagnostic au chargement
+        window.addEventListener('load', runDiagnosis);
+    </script>
+</body>
+</html>

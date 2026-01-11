@@ -41,7 +41,7 @@ export default function DashboardPage() {
     },
     {
       title: "Modèles",
-      value: 0,
+      value: projects?.reduce((acc, p) => acc + (p.models_count || 0), 0) || 0,
       icon: Brain,
       href: "/models",
       color: "text-purple-600",

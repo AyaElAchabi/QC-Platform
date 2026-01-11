@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Inference API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        select, input {
+            padding: 8px;
+            margin: 5px;
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test de l'API d'Inférence</h1>
+
+    <div class="section">
+        <h2>1. Connexion</h2>
+        <input type="text" id="username" placeholder="Email" value="admin@test.com">
+        <input type="password" id="password" placeholder="Password" value="Admin@2024">
+        <button onclick="login()">Se connecter</button>
+        <div id="login-result"></div>
+    </div>
+
+    <div class="section">
+        <h2>2. Liste des modèles</h2>
+        <button onclick="fetchModels()">Récupérer les modèles</button>
+        <div id="models-result"></div>
+        <select id="model-select" style="display:none;">
+            <option value="">Sélectionnez un modèle</option>
+        </select>
+    </div>
+
+    <div class="section">
+        <h2>3. Test d'inférence</h2>
+        <input type="file" id="image-file" accept="image/*">
+        <button onclick="runInference()">Détecter les défauts</button>
+        <div id="inference-result"></div>
+    </div>
+
+    <script>
+        let authToken = null;
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('login-result');
+
+            try {
+                // Test with JSON format
+                const response = await fetch('http://localhost:8000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: username, password: password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    authToken = data.access_token;
+                    resultDiv.innerHTML = `<p class="success">✓ Connexion réussie!</p><pre>Token: ${authToken.substring(0, 50)}...</pre>`;
+                    localStorage.setItem('auth_token', authToken);
+                } else {
+                    resultDiv.innerHTML = `<p class="error">✗ Erreur de connexion</p><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">✗ Erreur: ${error.message}</p>`;
+            }
+        }
+
+        async function fetchModels() {
+            const resultDiv = document.getElementById('models-result');
+            const modelSelect = document.getElementById('model-select');
+
+            if (!authToken) {
+                authToken = localStorage.getItem('auth_token');
+                if (!authToken) {
+                    resultDiv.innerHTML = '<p class="error">✗ Veuillez d\'abord vous connecter</p>';
+                    return;
+                }
+            }
+
+            try {
+                const response = await fetch('http://localhost:8000/models', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `<p class="success">✓ ${data.length} modèle(s) trouvé(s)</p><pre>${JSON.stringify(data, null, 2)}</pre>`;
+
+                    // Populate select
+                    if (data.length > 0) {
+                        modelSelect.style.display = 'block';
+                        modelSelect.innerHTML = '<option value="">Sélectionnez un modèle</option>';
+                        data.forEach(model => {
+                            const option = document.createElement('option');
+                            option.value = model.id;
+                            option.textContent = `${model.name} - ${model.version}`;
+                            modelSelect.appendChild(option);
+                        });
+                    }
+                } else {
+                    resultDiv.innerHTML = `<p class="error">✗ Erreur</p><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">✗ Erreur: ${error.message}</p>`;
+            }
+        }
+
+        async function runInference() {
+            const resultDiv = document.getElementById('inference-result');
+            const fileInput = document.getElementById('image-file');
+            const modelSelect = document.getElementById('model-select');
+
+            if (!authToken) {
+                authToken = localStorage.getItem('auth_token');
+                if (!authToken) {
+                    resultDiv.innerHTML = '<p class="error">✗ Veuillez d\'abord vous connecter</p>';
+                    return;
+                }
+            }
+
+            const modelId = modelSelect.value;
+            if (!modelId) {
+                resultDiv.innerHTML = '<p class="error">✗ Veuillez sélectionner un modèle</p>';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            if (!file) {
+                resultDiv.innerHTML = '<p class="error">✗ Veuillez sélectionner une image</p>';
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+                formData.append('model_id', modelId);
+                formData.append('confidence_threshold', '0.25');
+                formData.append('enable_xai', 'false');
+
+                resultDiv.innerHTML = '<p>⏳ Détection en cours...</p>';
+
+                const response = await fetch('http://localhost:8000/api/inference/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✓ Détection réussie!</p>
+                        <p><strong>Détections:</strong> ${data.num_detections}</p>
+                        <p><strong>Temps d'inférence:</strong> ${data.inference_time_ms.toFixed(0)}ms</p>
+                        <pre>${JSON.stringify(data.detections, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">✗ Erreur</p><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">✗ Erreur: ${error.message}</p>`;
+            }
+        }
+
+        // Auto-load token on page load
+        window.onload = function() {
+            authToken = localStorage.getItem('auth_token');
+            if (authToken) {
+                document.getElementById('login-result').innerHTML = '<p class="success">✓ Token trouvé dans le cache</p>';
+                fetchModels();
+            }
+        };
+    </script>
+</body>
+</html>

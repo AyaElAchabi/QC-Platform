@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réinitialisation du Rôle Admin</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        button.danger {
+            background: #dc2626;
+        }
+        button.danger:hover {
+            background: #b91c1c;
+        }
+        button.success {
+            background: #16a34a;
+        }
+        button.success:hover {
+            background: #15803d;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .status.info {
+            background: #dbeafe;
+            border-left: 4px solid #2563eb;
+        }
+        .status.success {
+            background: #dcfce7;
+            border-left: 4px solid #16a34a;
+        }
+        .status.error {
+            background: #fee2e2;
+            border-left: 4px solid #dc2626;
+        }
+        pre {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #2563eb;
+            background: #f8fafc;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔧 Correction du Menu Utilisateurs</h1>
+        <p>Cette page va vous aider à corriger le problème du menu "Utilisateurs" manquant.</p>
+    </div>
+
+    <div class="card">
+        <h2>📊 État Actuel</h2>
+        <div id="currentState"></div>
+    </div>
+
+    <div class="card">
+        <h2>🔄 Actions</h2>
+        
+        <div class="step">
+            <h3>Étape 1: Nettoyer le localStorage</h3>
+            <p>Supprime toutes les données stockées localement</p>
+            <button onclick="clearStorage()" class="danger">🗑️ Nettoyer le localStorage</button>
+        </div>
+
+        <div class="step">
+            <h3>Étape 2: Se connecter via l'API</h3>
+            <p>Récupère un nouveau token avec le rôle ADMIN</p>
+            <button onclick="loginAndSaveRole()">🔐 Se connecter</button>
+        </div>
+
+        <div class="step">
+            <h3>Étape 3: Aller sur la plateforme</h3>
+            <p>Ouvrir la plateforme avec les nouvelles données</p>
+            <button onclick="goToPlatform()" class="success">🚀 Ouvrir la Plateforme</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📝 Résultat</h2>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function showCurrentState() {
+            const email = localStorage.getItem('mlops_user_email');
+            const role = localStorage.getItem('mlops_user_role');
+            const token = localStorage.getItem('mlops_access_token');
+            
+            let html = '<div class="status info">';
+            html += '<strong>État du localStorage:</strong><br>';
+            html += `Email: ${email || '❌ Non défini'}<br>`;
+            html += `Rôle: ${role || '❌ Non défini'}<br>`;
+            html += `Token: ${token ? '✅ Présent' : '❌ Absent'}`;
+            html += '</div>';
+            
+            document.getElementById('currentState').innerHTML = html;
+        }
+
+        function clearStorage() {
+            localStorage.clear();
+            showResult('✅ localStorage nettoyé !', 'success');
+            showCurrentState();
+        }
+
+        async function loginAndSaveRole() {
+            showResult('⏳ Connexion en cours...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'eyaelachabi@gmail.com',
+                        password: 'Eyaelach0200@'
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Échec de connexion');
+                }
+                
+                const data = await response.json();
+                const token = data.access_token;
+                
+                // Décoder le JWT
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                
+                // Sauvegarder dans localStorage
+                localStorage.setItem('mlops_access_token', token);
+                localStorage.setItem('mlops_user_email', payload.email);
+                localStorage.setItem('mlops_user_role', payload.role);
+                localStorage.setItem('mlops_user_id', payload.sub);
+                
+                let html = '<div class="status success">';
+                html += '<strong>✅ Connexion réussie !</strong><br><br>';
+                html += `Email: ${payload.email}<br>`;
+                html += `Rôle: <strong>${payload.role}</strong><br>`;
+                html += `ID: ${payload.sub}`;
+                html += '</div>';
+                
+                showResult(html, 'success');
+                showCurrentState();
+                
+            } catch (error) {
+                showResult(`❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        function goToPlatform() {
+            window.location.href = 'http://localhost:3000/dashboard';
+        }
+
+        function showResult(message, type = 'info') {
+            document.getElementById('result').innerHTML = 
+                `<div class="status ${type}">${message}</div>`;
+        }
+
+        // Afficher l'état au chargement
+        showCurrentState();
+    </script>
+</body>
+</html>

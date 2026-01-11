@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Inférence Visuel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { margin-top: 0; }
+        h2 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        button {
+            padding: 12px 24px;
+            margin: 5px 0;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 100%;
+        }
+        button:hover { background-color: #45a049; }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        input, select {
+            padding: 10px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .image-container {
+            position: relative;
+            width: 100%;
+            background: #f9f9f9;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        canvas {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+        .detections-list {
+            margin-top: 20px;
+        }
+        .detection-item {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 4px solid #4CAF50;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .stat-box {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .stat-box .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2e7d32;
+        }
+        .stat-box .label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .xai-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3e0;
+            border-radius: 4px;
+        }
+        .heatmap-container {
+            margin-top: 10px;
+        }
+        .heatmap-container img {
+            max-width: 100%;
+            border-radius: 4px;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .toggle {
+            position: relative;
+            width: 50px;
+            height: 24px;
+        }
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #4CAF50;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        #log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔬 Test Inférence avec Visualisation</h1>
+
+    <div class="container">
+        <!-- Left Panel - Configuration -->
+        <div class="panel">
+            <h2>Configuration</h2>
+
+            <div style="margin-bottom: 15px;">
+                <label><strong>Email</strong></label>
+                <input type="text" id="username" value="admin@test.com">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label><strong>Mot de passe</strong></label>
+                <input type="password" id="password" value="Admin@2024">
+            </div>
+
+            <button onclick="login()">🔐 Se Connecter</button>
+            <div id="login-status" style="margin-top: 10px;"></div>
+
+            <hr style="margin: 20px 0;">
+
+            <div style="margin-bottom: 15px;">
+                <label><strong>Modèle</strong></label>
+                <select id="model-select" disabled>
+                    <option value="">Chargement...</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label><strong>Seuil de confiance: <span id="threshold-value">25%</span></strong></label>
+                <input type="range" id="confidence-threshold" min="10" max="90" value="25"
+                       oninput="document.getElementById('threshold-value').textContent = this.value + '%'"
+                       style="width: 100%;">
+            </div>
+
+            <div class="toggle-container">
+                <label><strong>🧠 Explications XAI</strong></label>
+                <label class="toggle">
+                    <input type="checkbox" id="enable-xai">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label><strong>Image</strong></label>
+                <input type="file" id="image-file" accept="image/*" onchange="previewImage()">
+            </div>
+
+            <button id="detect-btn" onclick="runInference()" disabled>⚡ Détecter les Défauts</button>
+
+            <hr style="margin: 20px 0;">
+
+            <div id="log"></div>
+        </div>
+
+        <!-- Right Panel - Results -->
+        <div class="panel">
+            <h2>Résultats</h2>
+
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="value" id="detection-count">-</div>
+                    <div class="label">Détections</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="inference-time">-</div>
+                    <div class="label">Temps (ms)</div>
+                </div>
+            </div>
+
+            <div class="image-container">
+                <canvas id="result-canvas"></canvas>
+            </div>
+
+            <div class="detections-list" id="detections-list"></div>
+
+            <!-- XAI Section -->
+            <div class="xai-section" id="xai-section" style="display: none;">
+                <h3>🧠 Explications IA (XAI)</h3>
+                <div id="xai-metrics"></div>
+                <div class="heatmap-container" id="xai-heatmap"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = null;
+        let selectedImage = null;
+        let currentModel = null;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'red' : type === 'success' ? 'green' : '#333';
+            logDiv.innerHTML += `<div style="color: ${color}">[${time}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const statusDiv = document.getElementById('login-status');
+
+            log('Tentative de connexion...');
+
+            try {
+                const response = await fetch('http://localhost:8000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: username, password: password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    authToken = data.access_token;
+                    statusDiv.innerHTML = '<p class="success">✓ Connecté</p>';
+                    log('Connexion réussie', 'success');
+                    localStorage.setItem('auth_token', authToken);
+                    await fetchModels();
+                } else {
+                    statusDiv.innerHTML = `<p class="error">✗ ${data.detail}</p>`;
+                    log(`Erreur de connexion: ${data.detail}`, 'error');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<p class="error">✗ Erreur: ${error.message}</p>`;
+                log(`Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        async function fetchModels() {
+            const modelSelect = document.getElementById('model-select');
+
+            log('Récupération des modèles...');
+
+            try {
+                const response = await fetch('http://localhost:8000/models', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                const models = await response.json();
+
+                if (response.ok && models.length > 0) {
+                    modelSelect.innerHTML = '';
+                    models.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.id;
+                        option.textContent = `${model.name} - ${model.version}`;
+                        option.dataset.model = JSON.stringify(model);
+                        modelSelect.appendChild(option);
+                    });
+                    modelSelect.disabled = false;
+                    currentModel = models[0];
+                    log(`${models.length} modèle(s) chargé(s)`, 'success');
+                    updateDetectButton();
+                } else {
+                    log('Aucun modèle disponible', 'error');
+                }
+            } catch (error) {
+                log(`Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        function previewImage() {
+            const fileInput = document.getElementById('image-file');
+            const file = fileInput.files[0];
+
+            if (file) {
+                selectedImage = file;
+                log(`Image sélectionnée: ${file.name}`, 'success');
+                updateDetectButton();
+
+                // Afficher l'image
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const canvas = document.getElementById('result-canvas');
+                    const ctx = canvas.getContext('2d');
+                    const img = new Image();
+                    img.onload = function() {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function updateDetectButton() {
+            const btn = document.getElementById('detect-btn');
+            btn.disabled = !(authToken && selectedImage && currentModel);
+        }
+
+        async function runInference() {
+            if (!selectedImage || !currentModel) return;
+
+            const modelId = document.getElementById('model-select').value;
+            const threshold = document.getElementById('confidence-threshold').value / 100;
+            const enableXai = document.getElementById('enable-xai').checked;
+
+            log('🚀 Lancement de la détection...');
+
+            document.getElementById('detection-count').textContent = '...';
+            document.getElementById('inference-time').textContent = '...';
+
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedImage);
+                formData.append('model_id', modelId);
+                formData.append('confidence_threshold', threshold.toString());
+                formData.append('enable_xai', enableXai.toString());
+
+                const response = await fetch('http://localhost:8000/api/inference/predict', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` },
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    log(`✅ Détection réussie: ${result.num_detections} objet(s)`, 'success');
+                    displayResults(result);
+                } else {
+                    log(`❌ Erreur: ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        function displayResults(result) {
+            // Update stats
+            document.getElementById('detection-count').textContent = result.num_detections;
+            document.getElementById('inference-time').textContent = Math.round(result.inference_time_ms);
+
+            // Draw detections on canvas
+            drawDetections(result.detections);
+
+            // Show detections list
+            displayDetectionsList(result.detections);
+
+            // Show XAI if available
+            if (result.xai_heatmap || result.xai_metrics) {
+                displayXAI(result);
+            }
+        }
+
+        function drawDetections(detections) {
+            const canvas = document.getElementById('result-canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Colors for different classes
+            const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
+
+            detections.forEach((detection, idx) => {
+                const [x1, y1, x2, y2] = detection.bbox;
+                const color = colors[detection.class_id % colors.length];
+
+                // Draw box
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+                // Draw label background
+                const label = `${detection.class_name} ${(detection.confidence * 100).toFixed(1)}%`;
+                ctx.font = 'bold 16px Arial';
+                const textWidth = ctx.measureText(label).width;
+
+                ctx.fillStyle = color;
+                ctx.fillRect(x1, y1 - 28, textWidth + 12, 28);
+
+                // Draw label text
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillText(label, x1 + 6, y1 - 8);
+            });
+        }
+
+        function displayDetectionsList(detections) {
+            const listDiv = document.getElementById('detections-list');
+
+            if (detections.length === 0) {
+                listDiv.innerHTML = '<p style="text-align: center; color: #999;">Aucune détection</p>';
+                return;
+            }
+
+            let html = '<h3>📋 Détections</h3>';
+            detections.forEach((det, idx) => {
+                html += `
+                    <div class="detection-item">
+                        <strong>${idx + 1}. ${det.class_name}</strong>
+                        <div style="margin-top: 5px; font-size: 14px;">
+                            <span style="background: #4CAF50; color: white; padding: 2px 8px; border-radius: 3px;">
+                                ${(det.confidence * 100).toFixed(1)}%
+                            </span>
+                            <span style="margin-left: 10px; color: #666;">
+                                Position: [${det.bbox.map(v => Math.round(v)).join(', ')}]
+                            </span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            listDiv.innerHTML = html;
+        }
+
+        function displayXAI(result) {
+            const xaiSection = document.getElementById('xai-section');
+            const metricsDiv = document.getElementById('xai-metrics');
+            const heatmapDiv = document.getElementById('xai-heatmap');
+
+            xaiSection.style.display = 'block';
+
+            // Display metrics
+            if (result.xai_metrics) {
+                const metrics = result.xai_metrics;
+                let html = `<p><strong>${metrics.summary}</strong></p>`;
+
+                if (metrics.confidence_stats) {
+                    html += `
+                        <div style="margin: 10px 0;">
+                            <strong>Statistiques de confiance:</strong><br>
+                            Moyenne: ${(metrics.confidence_stats.mean * 100).toFixed(1)}% |
+                            Min: ${(metrics.confidence_stats.min * 100).toFixed(1)}% |
+                            Max: ${(metrics.confidence_stats.max * 100).toFixed(1)}%
+                        </div>
+                    `;
+                }
+
+                if (metrics.explanation_text) {
+                    html += `<p>${metrics.explanation_text}</p>`;
+                }
+
+                metricsDiv.innerHTML = html;
+            }
+
+            // Display heatmap
+            if (result.xai_heatmap) {
+                heatmapDiv.innerHTML = `
+                    <h4>Carte d'attention (Grad-CAM)</h4>
+                    <img src="data:image/png;base64,${result.xai_heatmap}" alt="Heatmap">
+                `;
+            }
+        }
+
+        // Auto-load on page load
+        window.onload = function() {
+            authToken = localStorage.getItem('auth_token');
+            if (authToken) {
+                log('Token trouvé en cache');
+                document.getElementById('login-status').innerHTML = '<p class="success">✓ Connecté (cache)</p>';
+                fetchModels();
+            }
+        };
+    </script>
+</body>
+</html>
