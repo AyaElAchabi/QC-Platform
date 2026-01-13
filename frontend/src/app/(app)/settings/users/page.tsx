@@ -6,7 +6,7 @@ import { userManagementApi } from "@/lib/api/users";
 import { RoleBadge } from "@/components/auth/RoleBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
+import {
   Table,
   TableBody,
   TableCell,
@@ -277,11 +277,10 @@ export default function UserManagementPage() {
                       </TableCell>
                       <TableCell>
                         <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                            user.is_active
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${user.is_active
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
-                          }`}
+                            }`}
                         >
                           {user.is_active ? "Actif" : "Inactif"}
                         </span>
