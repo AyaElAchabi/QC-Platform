@@ -14,7 +14,8 @@ from api.routes import (
     models, 
     inference,
     user_management,
-    metrics
+    metrics,
+    xai
 )
 from core.database import engine, Base
 
@@ -48,6 +49,7 @@ app.include_router(training.router, tags=["training"])
 app.include_router(models.router, tags=["models"])
 app.include_router(inference.router, tags=["inference"])
 app.include_router(metrics.router, tags=["metrics"])
+app.include_router(xai.router, tags=["xai"])
 
 @app.get("/health")
 async def health_check():

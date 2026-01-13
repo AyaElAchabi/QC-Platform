@@ -109,16 +109,16 @@ export function Sidebar() {
   });
 
   return (
-    <aside className="w-64 border-r bg-card h-screen flex flex-col">
+    <aside className="w-64 border-r border-slate-200 bg-slate-50 h-screen flex flex-col">
       {/* Logo */}
-      <div className="p-6 border-b">
+      <div className="p-6 border-b border-slate-200">
         <Link href="/dashboard" className="flex items-center space-x-2">
-          <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
+          <div className="h-8 w-8 rounded-lg bg-slate-800 flex items-center justify-center">
             <span className="text-white font-bold text-lg">M</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold">MLOps QC</h1>
-            <p className="text-xs text-muted-foreground">Quality Control</p>
+            <h1 className="text-xl font-bold text-slate-800">MLOps QC</h1>
+            <p className="text-xs text-slate-500">Quality Control</p>
           </div>
         </Link>
       </div>
@@ -134,10 +134,10 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors",
+                "flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200",
                 isActive
-                  ? "bg-blue-100 text-blue-900 font-medium"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  ? "bg-slate-800 text-white font-medium"
+                  : "text-slate-600 hover:bg-slate-200 hover:text-slate-800"
               )}
             >
               <Icon className="h-5 w-5" />

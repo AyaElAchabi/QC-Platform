@@ -8,6 +8,12 @@ from PIL import Image
 import io
 import uuid
 import numpy as np
+import base64
+
+try:
+    import cv2
+except ImportError:
+    cv2 = None
 
 from api.dependencies import get_db, get_current_user
 from models.user import User
@@ -31,6 +37,8 @@ class PredictionResponse(BaseModel):
     inference_time_ms: float
     confidence_threshold: float
     image_size: dict
+    # Segmentation - image with colored overlay masks
+    segmented_image: Optional[str] = None  # Base64 encoded image with segmentation
     # XAI (Explainability) fields - optional
     xai_heatmap: Optional[str] = None  # Base64 encoded heatmap overlay
     xai_metrics: Optional[dict] = None  # Explanation metrics
@@ -41,6 +49,7 @@ async def predict(
     image: UploadFile = File(...),
     model_id: str = Form(...),
     confidence_threshold: float = Form(0.25),
+    enable_segmentation: bool = Form(True),  # Enabled by default
     enable_xai: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -123,14 +132,22 @@ async def predict(
                     xai_service = create_xai_service(model_path)
 
                     # Générer Grad-CAM
+                    print(f"Generating Grad-CAM heatmap for path: {tmp_path}")
                     gradcam_result = xai_service.generate_gradcam(tmp_path)
+                    print(f"Grad-CAM result: success={gradcam_result.get('success')}, error={gradcam_result.get('error')}")
+                    
                     if gradcam_result.get("success"):
                         heatmap_base64 = gradcam_result["heatmap"]
+                        print(f"Heatmap generated successfully, length: {len(heatmap_base64) if heatmap_base64 else 0}")
+                    else:
+                        print(f"Heatmap generation failed: {gradcam_result.get('error')}")
 
                     # Nettoyer
                     os.remove(tmp_path)
                 except Exception as heatmap_error:
+                    import traceback
                     print(f"Heatmap generation error: {heatmap_error}")
+                    traceback.print_exc()
                     heatmap_base64 = None
 
                 # Calculer les métriques selon qu'il y a des détections ou non
@@ -229,6 +246,59 @@ async def predict(
                 print(f"XAI generation error: {xai_error}")
                 xai_data = None
         
+        # Générer la segmentation avec masques colorés si demandé
+        segmented_image_data = None
+        if enable_segmentation and len(results["detections"]) > 0:
+            try:
+                from services.sam_segmentation import get_sam_service
+                sam_service = get_sam_service()
+                
+                # Générer les masques de segmentation
+                seg_result = sam_service.segment_with_bboxes(
+                    pil_image,
+                    results["detections"]
+                )
+                
+                segmented_image_data = seg_result.get("annotated_image")
+                print(f"Segmentation generated with {seg_result.get('num_masks', 0)} masks")
+                
+            except Exception as seg_error:
+                print(f"Segmentation error: {seg_error}")
+                # Fallback: créer une image annotée simple
+                try:
+                    img_np = np.array(pil_image)
+                    overlay = img_np.copy()
+                    
+                    # Couleur rouge semi-transparente pour les défauts
+                    for det in results["detections"]:
+                        bbox = det.get("bbox", [])
+                        if len(bbox) == 4:
+                            x1, y1, x2, y2 = [int(v) for v in bbox]
+                            # Overlay rouge sur la zone du défaut
+                            alpha = 0.4
+                            color = (255, 50, 50)  # Rouge
+                            overlay[y1:y2, x1:x2, 0] = np.clip(
+                                overlay[y1:y2, x1:x2, 0] * (1-alpha) + color[0] * alpha, 0, 255
+                            )
+                            overlay[y1:y2, x1:x2, 1] = np.clip(
+                                overlay[y1:y2, x1:x2, 1] * (1-alpha) + color[1] * alpha, 0, 255
+                            )
+                            overlay[y1:y2, x1:x2, 2] = np.clip(
+                                overlay[y1:y2, x1:x2, 2] * (1-alpha) + color[2] * alpha, 0, 255
+                            )
+                            # Contour
+                            cv2.rectangle(overlay, (x1, y1), (x2, y2), color, 2)
+                    
+                    # Encoder en base64
+                    from PIL import Image as PILImage
+                    pil_overlay = PILImage.fromarray(overlay.astype(np.uint8))
+                    buffer = io.BytesIO()
+                    pil_overlay.save(buffer, format='PNG')
+                    segmented_image_data = f"data:image/png;base64,{base64.b64encode(buffer.getvalue()).decode('utf-8')}"
+                except Exception as fallback_error:
+                    print(f"Fallback segmentation error: {fallback_error}")
+                    segmented_image_data = None
+        
         # Sauvegarder la prédiction dans la base de données
         prediction = Prediction(
             id=uuid.uuid4(),
@@ -266,6 +336,7 @@ async def predict(
             inference_time_ms=results["inference_time_ms"],
             confidence_threshold=confidence_threshold,
             image_size=results["image_size"],
+            segmented_image=segmented_image_data,
             xai_heatmap=xai_data["heatmap"] if xai_data else None,
             xai_metrics=xai_data["metrics"] if xai_data else None
         )

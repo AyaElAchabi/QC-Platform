@@ -30,35 +30,39 @@ export default function DashboardPage() {
       value: projects?.length || 0,
       icon: FolderKanban,
       href: "/projects",
-      color: "text-blue-600",
+      color: "text-slate-600",
+      bgColor: "bg-white border-slate-200 hover:border-slate-300",
     },
     {
       title: "Images",
       value: projects?.reduce((acc, p) => acc + (p.total_images || 0), 0) || 0,
       icon: Image,
       href: "/images",
-      color: "text-green-600",
+      color: "text-slate-600",
+      bgColor: "bg-white border-slate-200 hover:border-slate-300",
     },
     {
       title: "Modèles",
       value: projects?.reduce((acc, p) => acc + (p.models_count || 0), 0) || 0,
       icon: Brain,
       href: "/models",
-      color: "text-purple-600",
+      color: "text-slate-600",
+      bgColor: "bg-white border-slate-200 hover:border-slate-300",
     },
     {
       title: "Rapports",
       value: 0,
       icon: BarChart3,
       href: "/reports",
-      color: "text-orange-600",
+      color: "text-slate-600",
+      bgColor: "bg-white border-slate-200 hover:border-slate-300",
     },
   ];
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <p>Chargement...</p>
+        <p className="text-slate-500">Chargement...</p>
       </div>
     );
   }
@@ -68,7 +72,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <p className="text-red-600 font-bold mb-2">Erreur de chargement</p>
-          <p className="text-sm text-gray-600">{error.message}</p>
+          <p className="text-sm text-slate-500">{error.message}</p>
         </div>
       </div>
     );
@@ -78,13 +82,13 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold text-slate-800">Dashboard</h1>
+          <p className="text-slate-500">
             Vue d'ensemble de votre plateforme MLOps QC
           </p>
         </div>
         <Link href="/projects">
-          <Button>
+          <Button className="bg-slate-800 hover:bg-slate-700">
             <Plus className="mr-2 h-4 w-4" />
             Nouveau Projet
           </Button>
@@ -94,15 +98,15 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
           <Link key={stat.title} href={stat.href}>
-            <Card className="hover:shadow-lg transition cursor-pointer">
+            <Card className={`transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md ${stat.bgColor}`}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
+                <CardTitle className="text-sm font-medium text-slate-500">
                   {stat.title}
                 </CardTitle>
                 <stat.icon className={`h-4 w-4 ${stat.color}`} />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{stat.value}</div>
+                <div className="text-3xl font-bold text-slate-800">{stat.value}</div>
               </CardContent>
             </Card>
           </Link>

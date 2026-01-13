@@ -60,11 +60,11 @@ export default function ModelsPage() {
     }
   };
 
-  const productionModels = models.filter((m) => m.stage === "production");
-  const stagingModels = models.filter((m) => m.stage === "staging");
+  const productionModels = models.filter((m) => m.stage?.toLowerCase() === "production");
+  const stagingModels = models.filter((m) => m.stage?.toLowerCase() === "staging");
 
   const getStageColor = (stage: string) => {
-    switch (stage) {
+    switch (stage?.toLowerCase()) {
       case "production":
         return "bg-green-500";
       case "staging":

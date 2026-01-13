@@ -228,7 +228,7 @@ export function DetectionXAI({ imageUrl, detection, modelId }: DetectionXAIProps
 
       {/* Dialog avec les explications */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-none max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-purple-500" />
@@ -299,33 +299,24 @@ export function DetectionXAI({ imageUrl, detection, modelId }: DetectionXAIProps
               <div className="space-y-4">
                 {/* Visualisation */}
                 {explanations[activeTab].success && explanations[activeTab].heatmap ? (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Image originale */}
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-semibold">Image Originale</h3>
-                      <div className="relative rounded-lg border overflow-hidden bg-gray-100">
+                    <div className="space-y-3">
+                      <h3 className="text-base font-semibold">Image Originale</h3>
+                      <div className="relative rounded-lg border-2 overflow-hidden bg-gray-100 shadow-md">
                         <img
                           src={imageUrl}
                           alt="Original"
                           className="w-full h-auto"
-                        />
-                        {/* Overlay bounding box */}
-                        <div
-                          className="absolute border-2 border-green-500 pointer-events-none"
-                          style={{
-                            left: `${(detection.bbox[0] / 640) * 100}%`,
-                            top: `${(detection.bbox[1] / 640) * 100}%`,
-                            width: `${((detection.bbox[2] - detection.bbox[0]) / 640) * 100}%`,
-                            height: `${((detection.bbox[3] - detection.bbox[1]) / 640) * 100}%`,
-                          }}
+                          style={{ minHeight: '350px', objectFit: 'contain' }}
                         />
                       </div>
                     </div>
 
                     {/* Heatmap XAI */}
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold">
+                        <h3 className="text-base font-semibold">
                           {methodInterpretations[activeTab]?.title || activeTab.toUpperCase()}
                         </h3>
                         <div className="flex gap-2">
@@ -344,11 +335,12 @@ export function DetectionXAI({ imageUrl, detection, modelId }: DetectionXAIProps
                           </Button>
                         </div>
                       </div>
-                      <div className="relative rounded-lg border overflow-hidden">
+                      <div className="relative rounded-lg border-2 overflow-hidden shadow-md">
                         <img
                           src={explanations[activeTab].heatmap!}
                           alt={`${activeTab} explanation`}
                           className="w-full h-auto"
+                          style={{ minHeight: '350px', objectFit: 'contain' }}
                         />
                       </div>
                     </div>
