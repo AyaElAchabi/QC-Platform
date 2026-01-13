@@ -112,12 +112,12 @@ export function Sidebar() {
     <aside className="w-64 border-r border-slate-200 bg-slate-50 h-screen flex flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-slate-200">
-        <Link href="/dashboard" className="flex items-center space-x-2">
-          <div className="h-8 w-8 rounded-lg bg-slate-800 flex items-center justify-center">
-            <span className="text-white font-bold text-lg">M</span>
+        <Link href="/dashboard" className="flex items-center space-x-3">
+          <div className="h-10 w-10 rounded-xl bg-slate-800 flex items-center justify-center">
+            <span className="text-white font-bold text-xl">M</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800">MLOps QC</h1>
+            <h1 className="text-lg font-bold text-slate-800">MLOps QC</h1>
             <p className="text-xs text-slate-500">Quality Control</p>
           </div>
         </Link>
@@ -134,13 +134,13 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200",
+                "flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200",
                 isActive
                   ? "bg-slate-800 text-white font-medium"
-                  : "text-slate-600 hover:bg-slate-200 hover:text-slate-800"
+                  : "text-slate-600 hover:bg-slate-800 hover:text-white"
               )}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className={cn("h-5 w-5", isActive ? "text-white" : "text-slate-400 group-hover:text-white")} />
               <span>{item.title}</span>
             </Link>
           );
@@ -148,16 +148,16 @@ export function Sidebar() {
       </nav>
 
       {/* User section */}
-      <div className="p-4 border-t">
+      <div className="p-4 border-t border-slate-200">
         <div className="mb-3 px-3">
-          <p className="text-sm font-medium truncate">{user?.email || "Chargement..."}</p>
+          <p className="text-sm font-medium text-slate-700 truncate">{user?.email || "Chargement..."}</p>
           <div className="mt-2">
             {user?.role && <RoleBadge role={user.role as UserRole} />}
           </div>
         </div>
         <Button
           variant="outline"
-          className="w-full"
+          className="w-full border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
           onClick={() => {
             console.log("🚪 Déconnexion...");
             logout();

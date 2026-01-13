@@ -17,14 +17,14 @@ export enum Permission {
   PROJECT_UPDATE = "PROJECT_UPDATE",
   PROJECT_DELETE = "PROJECT_DELETE",
   PROJECT_ARCHIVE = "PROJECT_ARCHIVE",
-  
+
   // Images
   IMAGE_UPLOAD = "IMAGE_UPLOAD",
   IMAGE_READ = "IMAGE_READ",
   IMAGE_UPDATE = "IMAGE_UPDATE",
   IMAGE_DELETE = "IMAGE_DELETE",
   IMAGE_BULK_DELETE = "IMAGE_BULK_DELETE",
-  
+
   // Annotations
   ANNOTATION_CREATE = "ANNOTATION_CREATE",
   ANNOTATION_READ = "ANNOTATION_READ",
@@ -32,45 +32,45 @@ export enum Permission {
   ANNOTATION_DELETE = "ANNOTATION_DELETE",
   ANNOTATION_REVIEW = "ANNOTATION_REVIEW",
   ANNOTATION_VALIDATE = "ANNOTATION_VALIDATE",
-  
+
   // Modèles
   MODEL_READ = "MODEL_READ",
   MODEL_UPLOAD = "MODEL_UPLOAD",
   MODEL_DELETE = "MODEL_DELETE",
   MODEL_DEPLOY = "MODEL_DEPLOY",
-  
+
   // Entraînement
   TRAINING_START = "TRAINING_START",
   TRAINING_READ = "TRAINING_READ",
   TRAINING_CANCEL = "TRAINING_CANCEL",
   TRAINING_DELETE = "TRAINING_DELETE",
-  
+
   // Inférence
   INFERENCE_RUN = "INFERENCE_RUN",
   INFERENCE_READ = "INFERENCE_READ",
   INFERENCE_DELETE = "INFERENCE_DELETE",
-  
+
   // XAI (Explainability)
   XAI_GENERATE = "XAI_GENERATE",
   XAI_READ = "XAI_READ",
-  
+
   // Feedback
   FEEDBACK_CREATE = "FEEDBACK_CREATE",
   FEEDBACK_READ = "FEEDBACK_READ",
   FEEDBACK_RESOLVE = "FEEDBACK_RESOLVE",
-  
+
   // Rapports
   REPORT_GENERATE = "REPORT_GENERATE",
   REPORT_READ = "REPORT_READ",
   REPORT_EXPORT = "REPORT_EXPORT",
-  
+
   // Utilisateurs (Admin uniquement)
   USER_READ = "USER_READ",
   USER_CREATE = "USER_CREATE",
   USER_UPDATE = "USER_UPDATE",
   USER_DELETE = "USER_DELETE",
   USER_MANAGE_ROLES = "USER_MANAGE_ROLES",
-  
+
   // Audit
   AUDIT_READ = "AUDIT_READ",
 }
@@ -78,7 +78,7 @@ export enum Permission {
 // Matrice des permissions par rôle (correspond au backend)
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   [UserRole.ADMIN]: Object.values(Permission), // Toutes les permissions
-  
+
   [UserRole.CHEF_OPERATOR]: [
     // Projets
     Permission.PROJECT_CREATE,
@@ -127,7 +127,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     // Audit
     Permission.AUDIT_READ,
   ],
-  
+
   [UserRole.OPERATOR]: [
     // Projets (lecture seule)
     Permission.PROJECT_READ,
@@ -158,7 +158,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     // Rapports (lecture seule)
     Permission.REPORT_READ,
   ],
-  
+
   [UserRole.VIEWER]: [
     // Projets (lecture seule)
     Permission.PROJECT_READ,
@@ -189,10 +189,10 @@ export const ROLE_HIERARCHY: Record<UserRole, number> = {
 
 // Badges de couleur par rôle
 export const ROLE_COLORS: Record<UserRole, string> = {
-  [UserRole.ADMIN]: "bg-purple-100 text-purple-800 border-purple-200",
-  [UserRole.CHEF_OPERATOR]: "bg-blue-100 text-blue-800 border-blue-200",
-  [UserRole.OPERATOR]: "bg-green-100 text-green-800 border-green-200",
-  [UserRole.VIEWER]: "bg-gray-100 text-gray-800 border-gray-200",
+  [UserRole.ADMIN]: "bg-violet-100 text-violet-600 border-violet-200",
+  [UserRole.CHEF_OPERATOR]: "bg-indigo-100 text-indigo-600 border-indigo-200",
+  [UserRole.OPERATOR]: "bg-emerald-100 text-emerald-600 border-emerald-200",
+  [UserRole.VIEWER]: "bg-slate-100 text-slate-600 border-slate-200",
 };
 
 // Labels lisibles pour les rôles

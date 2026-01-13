@@ -3,7 +3,7 @@ Point d'entrée principal de l'application FastAPI
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routes import auth, projects, images
+from api.routes import auth, projects, images, xai
 from core.database import engine, Base
 
 # Créer les tables
@@ -28,6 +28,7 @@ app.add_middleware(
 app.include_router(auth.router, tags=["auth"])
 app.include_router(projects.router, tags=["projects"])
 app.include_router(images.router, tags=["images"])
+app.include_router(xai.router, tags=["xai"])
 
 @app.get("/health")
 async def health_check():

@@ -31,22 +31,22 @@ export default function LoginPage() {
       });
 
       console.log("Réponse du serveur:", response.status);
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Erreur de connexion:", errorData);
         throw new Error(errorData.detail || "Login failed");
       }
-      
+
       const data = await response.json();
       console.log("Login réussi, token reçu");
-      
+
       // Utiliser la fonction utilitaire pour stocker le token (localStorage + cookies)
       setAuthToken(data.access_token);
-      
+
       // Mettre à jour le store d'authentification
       checkAuth();
-      
+
       console.log("Redirection vers /dashboard");
       router.push("/dashboard");
     } catch (err: any) {

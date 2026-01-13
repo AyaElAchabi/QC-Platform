@@ -14,19 +14,19 @@ export function LabelStudioButton({ projectId }: LabelStudioButtonProps) {
 
   const openLabelStudio = async () => {
     setIsLoading(true);
-    
+
     try {
       const token = localStorage.getItem("mlops_access_token");
-      
+
       // Essayer de récupérer l'URL existante
       let response = await axios.get(
         `http://localhost:8000/api/projects/${projectId}/labelstudio-url`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       // Ouvrir Label Studio dans un nouvel onglet
       window.open(response.data.url, "_blank");
-      
+
     } catch (error: any) {
       if (error.response?.status === 404) {
         // Label Studio pas encore configuré
@@ -49,7 +49,7 @@ export function LabelStudioButton({ projectId }: LabelStudioButtonProps) {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       // Ouvrir Label Studio
       window.open(response.data.labelstudio_url, "_blank");
     } catch (error) {

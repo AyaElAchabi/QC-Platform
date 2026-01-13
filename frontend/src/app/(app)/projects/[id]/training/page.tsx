@@ -84,13 +84,13 @@ export default function TrainingPage({ params }: { params: Promise<{ id: string 
 
   const handleCancelTraining = async () => {
     if (!runningJob) return;
-    
+
     if (!confirm("Êtes-vous sûr de vouloir arrêter ce training en cours ?")) {
       return;
     }
 
     setIsCancelling(true);
-    
+
     try {
       const token = localStorage.getItem("mlops_access_token");
       await axios.post(
@@ -114,7 +114,7 @@ export default function TrainingPage({ params }: { params: Promise<{ id: string 
 
   const handleTrain = async () => {
     setIsTraining(true);
-    
+
     try {
       const token = localStorage.getItem("mlops_access_token");
       const response = await axios.post(

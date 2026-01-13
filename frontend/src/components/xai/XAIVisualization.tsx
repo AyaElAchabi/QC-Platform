@@ -31,6 +31,13 @@ interface XAIMethod {
   speed: "fast" | "medium" | "slow" | "very_slow";
 }
 
+interface XAIExplanation {
+  method: string;
+  heatmap?: string;
+  success: boolean;
+  error?: string;
+}
+
 const XAI_METHODS: XAIMethod[] = [
   {
     id: "gradcam",
@@ -76,7 +83,7 @@ const SPEED_LABELS = {
 export function XAIVisualization({ imageUrl, modelId, onGenerate }: XAIVisualizationProps) {
   const [selectedMethods, setSelectedMethods] = useState<string[]>(["gradcam"]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [explanations, setExplanations] = useState<Record<string, any>>({});
+  const [explanations, setExplanations] = useState<Record<string, XAIExplanation>>({});
 
   const toggleMethod = (methodId: string) => {
     setSelectedMethods(prev =>
@@ -91,13 +98,15 @@ export function XAIVisualization({ imageUrl, modelId, onGenerate }: XAIVisualiza
 
     setIsGenerating(true);
     try {
-      const response = await apiClient.post("/api/xai/generate", {
+      const response = await apiClient.post<{ explanations: Record<string, XAIExplanation> }>("/api/xai/generate", {
         image_path: imageUrl,
         methods: selectedMethods,
         model_id: modelId
       });
 
-      setExplanations(response.data.explanations);
+      if (response.data) {
+        setExplanations(response.data.explanations);
+      }
 
       if (onGenerate) {
         onGenerate(selectedMethods);

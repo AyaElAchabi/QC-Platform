@@ -68,7 +68,6 @@ export default function InferenceDetectPage() {
   const [xaiHeatmap, setXaiHeatmap] = useState<string | null>(null);
   const [xaiMetrics, setXaiMetrics] = useState<XAIMetrics | null>(null);
   const [hasRun, setHasRun] = useState(false); // Track if inference was run
-  const [segmentedImage, setSegmentedImage] = useState<string | null>(null); // Image with segmentation overlay
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
@@ -109,12 +108,12 @@ export default function InferenceDetectPage() {
 
     // Couleurs pour les classes
     const colors = [
-      "#FF4444", // Rouge vif
-      "#FF8800", // Orange
-      "#FF00FF", // Magenta
-      "#00FFFF", // Cyan
-      "#FFFF00", // Jaune
-      "#44FF44", // Vert vif
+      "#FF6B6B",
+      "#4ECDC4",
+      "#45B7D1",
+      "#FFA07A",
+      "#98D8C8",
+      "#F7DC6F",
     ];
 
     // Dessiner les bounding boxes
@@ -122,81 +121,36 @@ export default function InferenceDetectPage() {
     detections.forEach((detection, idx) => {
       const [x1, y1, x2, y2] = detection.bbox;
       const color = colors[detection.class_id % colors.length];
-      const boxWidth = x2 - x1;
-      const boxHeight = y2 - y1;
 
-      console.log(`  Detection ${idx + 1}:`, detection.class_name, detection.confidence, `bbox:`, detection.bbox);
+      console.log(`  Detection ${idx + 1}:`, detection.class_name, detection.confidence);
 
-      // Ombre pour contraste
-      ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
-      ctx.shadowBlur = 4;
-      ctx.shadowOffsetX = 2;
-      ctx.shadowOffsetY = 2;
-
-      // Box avec bordure épaisse
+      // Box
       ctx.strokeStyle = color;
-      ctx.lineWidth = 4;
-      ctx.strokeRect(x1, y1, boxWidth, boxHeight);
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
-      // Désactiver l'ombre pour le label
-      ctx.shadowColor = "transparent";
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 0;
-
-      // Label background avec bordure
+      // Label background
+      ctx.fillStyle = color;
       const label = `${detection.class_name} ${(detection.confidence * 100).toFixed(1)}%`;
       ctx.font = "bold 16px Arial";
       const textWidth = ctx.measureText(label).width;
-      const labelHeight = 26;
-      const labelY = y1 > labelHeight ? y1 - labelHeight : y1 + boxHeight;
+      ctx.fillRect(x1, y1 - 25, textWidth + 10, 25);
 
-      // Fond du label
-      ctx.fillStyle = color;
-      ctx.fillRect(x1, labelY, textWidth + 14, labelHeight);
-
-      // Bordure du label
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x1, labelY, textWidth + 14, labelHeight);
-
-      // Texte du label
+      // Label text
       ctx.fillStyle = "#FFFFFF";
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 2;
-      ctx.strokeText(label, x1 + 7, labelY + 18);
-      ctx.fillText(label, x1 + 7, labelY + 18);
+      ctx.fillText(label, x1 + 5, y1 - 7);
     });
 
     console.log("✅ Dessin terminé !");
   }, [detections]);
 
   useEffect(() => {
-    if (imagePreview && detections.length > 0) {
+    if (imagePreview) {
+      // Wait for image to be fully loaded before drawing
       const img = imageRef.current;
       if (img) {
-        const attemptDraw = () => {
-          if (img.complete && img.naturalWidth > 0) {
-            console.log("🎨 useEffect: Image ready, drawing detections...");
-            drawDetections();
-          } else {
-            // Image not ready yet, try again
-            console.log("⏳ useEffect: Image not ready, retrying in 50ms...");
-            setTimeout(attemptDraw, 50);
-          }
-        };
-        attemptDraw();
-      }
-    } else if (imagePreview && detections.length === 0) {
-      // Image loaded but no detections yet - just draw the image
-      const img = imageRef.current;
-      const canvas = canvasRef.current;
-      if (img && canvas && img.complete && img.naturalWidth > 0) {
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          canvas.width = img.naturalWidth;
-          canvas.height = img.naturalHeight;
-          ctx.drawImage(img, 0, 0);
+        if (img.complete && img.naturalWidth > 0) {
+          drawDetections();
         }
       }
     }
@@ -241,7 +195,6 @@ export default function InferenceDetectPage() {
     setDetections([]);
     setXaiHeatmap(null);
     setXaiMetrics(null);
-    setSegmentedImage(null);
     setHasRun(false);
 
     try {
@@ -281,18 +234,11 @@ export default function InferenceDetectPage() {
           setXaiMetrics(data.xai_metrics);
         }
 
-        // Handle segmented image if present
-        if (data.segmented_image) {
-          console.log("🎨 Image segmentée reçue");
-          setSegmentedImage(data.segmented_image);
-        } else {
-          // Fallback: redraw with bounding boxes if no segmented image
-          setSegmentedImage(null);
-          requestAnimationFrame(() => {
-            console.log("🎨 Redessinage des détections (fallback)...");
-            drawDetections();
-          });
-        }
+        // Force redraw after state updates
+        setTimeout(() => {
+          console.log("🎨 Redessinage des détections...");
+          drawDetections();
+        }, 100);
       } else {
         const error = await response.json();
         console.error("❌ Erreur:", error);
@@ -463,9 +409,8 @@ export default function InferenceDetectPage() {
           <CardContent>
             {imagePreview ? (
               <div className="space-y-4">
-                {/* Display segmented image or fallback to canvas */}
+                {/* Canvas with detections */}
                 <div className="relative border-2 border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
-                  {/* Hidden image for canvas fallback */}
                   <img
                     ref={imageRef}
                     src={imagePreview}
@@ -473,22 +418,11 @@ export default function InferenceDetectPage() {
                     className="hidden"
                     onLoad={handleImageLoad}
                   />
-
-                  {/* Show segmented image if available, otherwise canvas */}
-                  {segmentedImage && hasRun ? (
-                    <img
-                      src={segmentedImage}
-                      alt="Résultat avec segmentation"
-                      className="w-full h-auto"
-                      style={{ display: 'block', maxHeight: '600px', objectFit: 'contain' }}
-                    />
-                  ) : (
-                    <canvas
-                      ref={canvasRef}
-                      className="w-full h-auto"
-                      style={{ display: 'block', maxHeight: '600px', objectFit: 'contain' }}
-                    />
-                  )}
+                  <canvas
+                    ref={canvasRef}
+                    className="w-full h-auto"
+                    style={{ display: 'block', maxHeight: '600px', objectFit: 'contain' }}
+                  />
 
                   {/* Overlay messages */}
                   {!hasRun && !loading && (
@@ -541,45 +475,6 @@ export default function InferenceDetectPage() {
                           ⚡ {inferenceTime.toFixed(0)}ms
                         </Badge>
                       )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Heatmap Display - Show when XAI is enabled and heatmap exists */}
-                {enableXai && hasRun && xaiHeatmap && (
-                  <div className="border-2 border-orange-200 rounded-lg overflow-hidden bg-gradient-to-r from-orange-50 to-yellow-50 p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Eye className="h-5 w-5 text-orange-500" />
-                      <h4 className="font-semibold text-orange-800">Carte d&apos;Attention (Grad-CAM)</h4>
-                    </div>
-                    <p className="text-xs text-orange-600">
-                      Les zones chaudes (rouge/jaune) montrent où le modèle a concentré son attention pour détecter les défauts.
-                    </p>
-                    <div className="relative border rounded-lg overflow-hidden bg-white">
-                      <img
-                        src={xaiHeatmap}
-                        alt="Heatmap d'attention du modèle"
-                        className="w-full h-auto"
-                        style={{ maxHeight: '400px', objectFit: 'contain' }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <div className="w-3 h-3 rounded bg-blue-500"></div>
-                        Basse attention
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <div className="w-3 h-3 rounded bg-green-500"></div>
-                        Moyenne
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <div className="w-3 h-3 rounded bg-yellow-500"></div>
-                        Élevée
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <div className="w-3 h-3 rounded bg-red-500"></div>
-                        Critique
-                      </span>
                     </div>
                   </div>
                 )}

@@ -45,63 +45,66 @@
 
 :root {
   --radius: 0.625rem;
-  /* Industrial theme - clean slate grays */
-  --background: oklch(0.985 0 0);
-  --foreground: oklch(0.15 0.01 250);
 
-  /* Card - clean white */
+  /* Professional Industrial Theme - Steel Gray, Black, White, Violet */
+
+  /* Background - Clean white with subtle warmth */
+  --background: oklch(0.98 0.002 270);
+  --foreground: oklch(0.20 0.02 260);
+
+  /* Card - Pure white with sharp contrast */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0.01 250);
+  --card-foreground: oklch(0.20 0.02 260);
 
   /* Popover */
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0.01 250);
+  --popover-foreground: oklch(0.20 0.02 260);
 
-  /* Primary - professional slate */
-  --primary: oklch(0.25 0.01 250);
-  --primary-foreground: oklch(0.98 0 0);
+  /* Primary - Pale Mauve/Soft Violet accent (matching reference) */
+  --primary: oklch(0.58 0.18 280);
+  --primary-foreground: oklch(0.99 0 0);
 
-  /* Secondary - light gray */
-  --secondary: oklch(0.96 0.005 250);
-  --secondary-foreground: oklch(0.25 0.01 250);
+  /* Secondary - Light steel gray */
+  --secondary: oklch(0.96 0.005 260);
+  --secondary-foreground: oklch(0.25 0.02 260);
 
-  /* Muted */
-  --muted: oklch(0.96 0.005 250);
-  --muted-foreground: oklch(0.45 0.01 250);
+  /* Muted - Subtle steel gray */
+  --muted: oklch(0.95 0.005 260);
+  --muted-foreground: oklch(0.50 0.02 260);
 
-  /* Accent */
-  --accent: oklch(0.96 0.005 250);
-  --accent-foreground: oklch(0.25 0.01 250);
+  /* Accent - Light violet tint */
+  --accent: oklch(0.95 0.03 280);
+  --accent-foreground: oklch(0.50 0.15 280);
 
-  /* Destructive - professional red */
+  /* Destructive - Professional red */
   --destructive: oklch(0.55 0.22 25);
 
-  /* Border - subtle */
-  --border: oklch(0.92 0.005 250);
-  --input: oklch(0.92 0.005 250);
-  --ring: oklch(0.65 0.01 250);
+  /* Border - Subtle steel gray */
+  --border: oklch(0.90 0.005 260);
+  --input: oklch(0.90 0.005 260);
+  --ring: oklch(0.58 0.18 280);
 
-  /* Charts - industrial palette */
-  --chart-1: oklch(0.45 0.15 250);
-  /* Steel blue */
-  --chart-2: oklch(0.55 0.12 160);
-  /* Teal */
-  --chart-3: oklch(0.50 0.08 250);
-  /* Slate */
-  --chart-4: oklch(0.60 0.15 40);
-  /* Amber */
-  --chart-5: oklch(0.55 0.10 25);
-  /* Coral */
+  /* Charts - Professional palette with violet as primary */
+  --chart-1: oklch(0.55 0.25 285);
+  /* Violet */
+  --chart-2: oklch(0.60 0.18 285);
+  /* Light Violet */
+  --chart-3: oklch(0.45 0.02 260);
+  /* Steel Gray */
+  --chart-4: oklch(0.55 0.12 200);
+  /* Teal accent */
+  --chart-5: oklch(0.50 0.15 25);
+  /* Muted Red */
 
-  /* Sidebar - industrial */
-  --sidebar: oklch(0.97 0.003 250);
-  --sidebar-foreground: oklch(0.15 0.01 250);
-  --sidebar-primary: oklch(0.25 0.01 250);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.94 0.005 250);
-  --sidebar-accent-foreground: oklch(0.25 0.01 250);
-  --sidebar-border: oklch(0.90 0.005 250);
-  --sidebar-ring: oklch(0.65 0.01 250);
+  /* Sidebar - Light steel with violet accents */
+  --sidebar: oklch(0.97 0.005 260);
+  --sidebar-foreground: oklch(0.35 0.02 260);
+  --sidebar-primary: oklch(0.55 0.25 285);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.55 0.25 285);
+  --sidebar-accent-foreground: oklch(0.99 0 0);
+  --sidebar-border: oklch(0.92 0.005 260);
+  --sidebar-ring: oklch(0.55 0.25 285);
 }
 
 .dark {
