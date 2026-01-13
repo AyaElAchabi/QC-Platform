@@ -67,6 +67,7 @@ export default function InferenceDetectPage() {
   const [enableXai, setEnableXai] = useState(false);
   const [xaiHeatmap, setXaiHeatmap] = useState<string | null>(null);
   const [xaiMetrics, setXaiMetrics] = useState<XAIMetrics | null>(null);
+  const [segmentedImage, setSegmentedImage] = useState<string | null>(null); // Segmented image from backend
   const [hasRun, setHasRun] = useState(false); // Track if inference was run
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -106,39 +107,21 @@ export default function InferenceDetectPage() {
     // Dessiner l'image
     ctx.drawImage(img, 0, 0);
 
-    // Couleurs pour les classes
-    const colors = [
-      "#FF6B6B",
-      "#4ECDC4",
-      "#45B7D1",
-      "#FFA07A",
-      "#98D8C8",
-      "#F7DC6F",
-    ];
-
-    // Dessiner les bounding boxes
-    console.log(`🖼️  Dessin de ${detections.length} détections...`);
+    // Dessiner les défauts en rouge (segmentation visuelle)
+    console.log(`🖼️  Dessin de ${detections.length} segmentations...`);
     detections.forEach((detection, idx) => {
       const [x1, y1, x2, y2] = detection.bbox;
-      const color = colors[detection.class_id % colors.length];
 
-      console.log(`  Detection ${idx + 1}:`, detection.class_name, detection.confidence);
+      console.log(`  Segmentation ${idx + 1}:`, detection.class_name, detection.confidence);
 
-      // Box
-      ctx.strokeStyle = color;
+      // Remplissage semi-transparent rouge pour la zone du défaut
+      ctx.fillStyle = "rgba(220, 38, 38, 0.4)"; // Rouge semi-transparent
+      ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+
+      // Contour rouge plus visible
+      ctx.strokeStyle = "rgba(220, 38, 38, 0.9)"; // Rouge opaque
       ctx.lineWidth = 3;
       ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-
-      // Label background
-      ctx.fillStyle = color;
-      const label = `${detection.class_name} ${(detection.confidence * 100).toFixed(1)}%`;
-      ctx.font = "bold 16px Arial";
-      const textWidth = ctx.measureText(label).width;
-      ctx.fillRect(x1, y1 - 25, textWidth + 10, 25);
-
-      // Label text
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fillText(label, x1 + 5, y1 - 7);
     });
 
     console.log("✅ Dessin terminé !");
@@ -195,6 +178,7 @@ export default function InferenceDetectPage() {
     setDetections([]);
     setXaiHeatmap(null);
     setXaiMetrics(null);
+    setSegmentedImage(null);
     setHasRun(false);
 
     try {
@@ -224,6 +208,15 @@ export default function InferenceDetectPage() {
         setInferenceTime(data.inference_time_ms || 0);
         setHasRun(true);
 
+        // Handle segmented image from backend (SAM segmentation)
+        if (data.segmented_image) {
+          console.log("🎯 Image segmentée reçue");
+          setSegmentedImage(data.segmented_image);
+        } else {
+          console.log("⚠️ Pas d'image segmentée, fallback sur affichage basique");
+          setSegmentedImage(null);
+        }
+
         // Handle XAI data if present
         if (data.xai_heatmap) {
           console.log("🔥 Heatmap reçue");
@@ -233,12 +226,6 @@ export default function InferenceDetectPage() {
           console.log("📊 Métriques XAI reçues");
           setXaiMetrics(data.xai_metrics);
         }
-
-        // Force redraw after state updates
-        setTimeout(() => {
-          console.log("🎨 Redessinage des détections...");
-          drawDetections();
-        }, 100);
       } else {
         const error = await response.json();
         console.error("❌ Erreur:", error);
@@ -409,8 +396,9 @@ export default function InferenceDetectPage() {
           <CardContent>
             {imagePreview ? (
               <div className="space-y-4">
-                {/* Canvas with detections */}
+                {/* Display segmented image from backend or fallback to canvas */}
                 <div className="relative border-2 border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                  {/* Hidden original image for canvas fallback */}
                   <img
                     ref={imageRef}
                     src={imagePreview}
@@ -418,11 +406,22 @@ export default function InferenceDetectPage() {
                     className="hidden"
                     onLoad={handleImageLoad}
                   />
-                  <canvas
-                    ref={canvasRef}
-                    className="w-full h-auto"
-                    style={{ display: 'block', maxHeight: '600px', objectFit: 'contain' }}
-                  />
+
+                  {/* Show segmented image if available, otherwise show canvas with basic overlay */}
+                  {hasRun && segmentedImage ? (
+                    <img
+                      src={segmentedImage}
+                      alt="Résultat segmenté"
+                      className="w-full h-auto"
+                      style={{ display: 'block', maxHeight: '600px', objectFit: 'contain' }}
+                    />
+                  ) : (
+                    <canvas
+                      ref={canvasRef}
+                      className="w-full h-auto"
+                      style={{ display: 'block', maxHeight: '600px', objectFit: 'contain' }}
+                    />
+                  )}
 
                   {/* Overlay messages */}
                   {!hasRun && !loading && (
